@@ -1,0 +1,4 @@
+relation: zoo.dat
+hidden_layer_neuron_number: 10
+activation: Logistic
+MSE_tolerance: 0.00001
