@@ -101,20 +101,17 @@ void Layer::Initialize(int32_t InputCount, int32_t OutputCount)
 
 void Layer::ForwardNode(int32_t OutputIndex)
 {
-	for (int32_t OutputIndex = 0; OutputIndex < OutputCount; OutputIndex++)
+	float Net = 0.0f;
+	float *pWeight = ppWeight[OutputIndex];
+
+	for (int32_t InputIndex = 0; InputIndex < InputCount; InputIndex++)
 	{
-		float Net = 0.0f;
-		float *pWeight = ppWeight[OutputIndex];
-
-		for (int32_t InputIndex = 0; InputIndex < InputCount; InputIndex++)
-		{
-			Net += pInput[InputIndex] * pWeight[InputIndex];
-		}
-		Net += pBias[OutputIndex];
-
-		pNet[OutputIndex] = Net;
-		pOutput[OutputIndex] = Activation(eActivation, Net);
+		Net += pInput[InputIndex] * pWeight[InputIndex];
 	}
+	Net += pBias[OutputIndex];
+
+	pNet[OutputIndex] = Net;
+	pOutput[OutputIndex] = Activation(eActivation, Net);
 }
 
 void Layer::ForwardNodeInputLayer(float *pInput, int32_t OutputIndex)
