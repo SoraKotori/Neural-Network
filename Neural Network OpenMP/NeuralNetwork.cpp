@@ -251,7 +251,7 @@ void NeuralNetwork::TrainData(DataSet &rDataSet, int32_t IterativeCount)
 			}
 
 			int32_t InputCount = OutputLayer.InputCount;
-			for (int32_t InputIndex = 0; InputIndex < OutputCount; InputIndex++)
+			for (int32_t InputIndex = 0; InputIndex < InputCount; InputIndex++)
 			{
 				OutputLayer.BackwardNodeOutputLayer(ppTarget[DataIndex], InputIndex);
 			}
@@ -259,7 +259,7 @@ void NeuralNetwork::TrainData(DataSet &rDataSet, int32_t IterativeCount)
 			for (int32_t LayerIndex = HiddenCount - 1; LayerIndex >= 0; LayerIndex--)
 			{
 				InputCount = pHiddenLayer[LayerIndex].InputCount;
-				for (int32_t InputIndex = 0; InputIndex < OutputCount; InputIndex++)
+				for (int32_t InputIndex = 0; InputIndex < InputCount; InputIndex++)
 				{
 					pHiddenLayer[LayerIndex].BackwardNode(InputIndex);
 				}
@@ -267,7 +267,7 @@ void NeuralNetwork::TrainData(DataSet &rDataSet, int32_t IterativeCount)
 			}
 
 			InputCount = OutputLayer.InputCount;
-			for (int32_t InputIndex = 0; InputIndex < OutputCount; InputIndex++)
+			for (int32_t InputIndex = 0; InputIndex < InputCount; InputIndex++)
 			{
 				InputLayer.BackwardNodeInputLayer(InputIndex);
 			}
