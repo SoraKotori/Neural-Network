@@ -99,6 +99,9 @@ public:
 	void TestData(DataSet &rDataSet, float &rMeanSquaredError);
 
 private:
+	void Forward(float *pInput);
+	void Backward(float *pTarget);
+
 	Layer InputLayer;
 	Layer OutputLayer;
 
