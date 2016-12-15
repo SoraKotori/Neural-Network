@@ -59,12 +59,12 @@ public:
 	void Create(int32_t InputCount, int32_t OutputCount, EnumActivation eActivation, float LearningRate);
 	void Connect(Layer *pForwardLayer, int32_t OutputCount);
 
-	void Forward(void);
-	void ForwardInputLayer(float *pInput);
+	void ForwardNode(int32_t OutputIndex);
+	void ForwardNodeInputLayer(float *pInput, int32_t OutputIndex);
 
-	void Backward(void);
-	void BackwardInputLayer(void);
-	void BackwardOutputLayer(float *pTarget);
+	void BackwardNode(int32_t InputIndex);
+	void BackwardNodeInputLayer(int32_t InputIndex);
+	void BackwardNodeOutputLayer(float *pTarget, int32_t InputIndex);
 
 	float SumOfSquaredError(float *pTarget);
 
@@ -99,16 +99,9 @@ public:
 	void TestData(DataSet &rDataSet, float &rMeanSquaredError);
 
 private:
-	void Parallel();
-
-	void Forward(float *pInput);
-	void Backward(float *pTarget);
-
 	Layer InputLayer;
 	Layer OutputLayer;
 
 	int32_t HiddenCount;
 	Layer *pHiddenLayer;
-
-	std::thread *pthread;
 };
