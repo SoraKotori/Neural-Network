@@ -263,10 +263,9 @@ void NeuralNetwork::TrainData(DataSet &rDataSet, int32_t IterativeCount)
 				{
 					pHiddenLayer[LayerIndex].BackwardNode(InputIndex);
 				}
-
 			}
 
-			InputCount = OutputLayer.InputCount;
+			InputCount = InputLayer.InputCount;
 			for (int32_t InputIndex = 0; InputIndex < InputCount; InputIndex++)
 			{
 				InputLayer.BackwardNodeInputLayer(InputIndex);
