@@ -1,6 +1,5 @@
 #pragma once
 #include <cstdint>
-#include <thread>
 
 typedef struct DataFile
 {
@@ -99,8 +98,6 @@ public:
 	void TestData(DataSet &rDataSet, float &rMeanSquaredError);
 
 private:
-	void Parallel();
-
 	void Forward(float *pInput);
 	void Backward(float *pTarget);
 
@@ -109,6 +106,4 @@ private:
 
 	int32_t HiddenCount;
 	Layer *pHiddenLayer;
-
-	std::thread *pthread;
 };

@@ -4,12 +4,12 @@
 
 #define InputCount 16
 #define OutputCount 1
-#define DataCount 101
+#define DataCount 1
 #define FileName "zoo.csv"
 
 #define Ratio 1.0F
-#define HiddenNode 10
-#define Iterative 10'000
+#define HiddenNode 100'000'00
+#define Iterative 1
 #define LearningRate 0.01F
 
 using namespace std;
