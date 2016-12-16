@@ -9,7 +9,7 @@
 
 #define Ratio 1.0F
 #define HiddenNode 10
-#define Iterative 10'000
+#define Iterative 100'000
 #define LearningRate 0.01F
 
 using namespace std;
