@@ -87,7 +87,7 @@ void Layer::Initialize(int32_t InputCount, int32_t OutputCount)
 	for (int32_t OutputIndex = 0; OutputIndex < OutputCount; OutputIndex++)
 	{
 		ppWeight[OutputIndex] = pBuffer;
-		pBuffer += OutputCount;
+		pBuffer += InputCount;
 	}
 
 	pNet = pBuffer;
