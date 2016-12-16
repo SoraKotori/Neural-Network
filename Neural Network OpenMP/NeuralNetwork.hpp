@@ -60,11 +60,11 @@ public:
 	void Connect(Layer *pForwardLayer, int32_t OutputCount);
 
 	void ForwardNode(int32_t OutputIndex);
-	void ForwardNodeInputLayer(float *pInput, int32_t OutputIndex);
+	void ForwardNodeInputLayer(int32_t OutputIndex, float *pInput);
 
 	void BackwardNode(int32_t InputIndex);
 	void BackwardNodeInputLayer(int32_t InputIndex);
-	void BackwardNodeOutputLayer(float *pTarget, int32_t InputIndex);
+	void BackwardNodeOutputLayer(int32_t InputIndex, float *pTarget);
 
 	float SumOfSquaredError(float *pTarget);
 

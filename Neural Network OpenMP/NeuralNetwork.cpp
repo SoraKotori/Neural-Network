@@ -114,7 +114,7 @@ void Layer::ForwardNode(int32_t OutputIndex)
 	pOutput[OutputIndex] = Activation(eActivation, Net);
 }
 
-void Layer::ForwardNodeInputLayer(float *pInput, int32_t OutputIndex)
+void Layer::ForwardNodeInputLayer(int32_t OutputIndex, float *pInput)
 {
 	Layer::pInput = pInput;
 	ForwardNode(OutputIndex);
@@ -141,9 +141,10 @@ void Layer::BackwardNode(int32_t InputIndex)
 
 void Layer::BackwardNodeInputLayer(int32_t InputIndex)
 {
+	float Input = pInput[InputIndex];
+
 	for (int32_t OutputIndex = 0; OutputIndex < OutputCount; OutputIndex++)
 	{
-		float Input = pInput[InputIndex];
 		float Delta = pDelta[OutputIndex];
 		float &rWeight = ppWeight[OutputIndex][InputIndex];
 
@@ -151,7 +152,7 @@ void Layer::BackwardNodeInputLayer(int32_t InputIndex)
 	}
 }
 
-void Layer::BackwardNodeOutputLayer(float *pTarget, int32_t InputIndex)
+void Layer::BackwardNodeOutputLayer(int32_t InputIndex, float *pTarget)
 {
 	float TotalError = 0.0f;
 	float Input = pInput[InputIndex];
@@ -218,31 +219,25 @@ NeuralNetwork::~NeuralNetwork()
 
 void NeuralNetwork::Forward(float *pInput)
 {
-#pragma omp parallel
+	int32_t OutputCount = InputLayer.OutputCount;
+	for (int32_t OutputIndex = 0; OutputIndex < OutputCount; OutputIndex++)
 	{
-		int32_t OutputCount = InputLayer.OutputCount;
-#pragma omp for
+		InputLayer.ForwardNodeInputLayer(OutputIndex, pInput);
+	}
+
+	for (int32_t LayerIndex = 0; LayerIndex < HiddenCount; LayerIndex++)
+	{
+		OutputCount = pHiddenLayer[LayerIndex].OutputCount;
 		for (int32_t OutputIndex = 0; OutputIndex < OutputCount; OutputIndex++)
 		{
-			InputLayer.ForwardNodeInputLayer(pInput, OutputIndex);
+			pHiddenLayer[LayerIndex].ForwardNode(OutputIndex);
 		}
+	}
 
-		for (int32_t LayerIndex = 0; LayerIndex < HiddenCount; LayerIndex++)
-		{
-			OutputCount = pHiddenLayer[LayerIndex].OutputCount;
-#pragma omp for
-			for (int32_t OutputIndex = 0; OutputIndex < OutputCount; OutputIndex++)
-			{
-				pHiddenLayer[LayerIndex].ForwardNode(OutputIndex);
-			}
-		}
-
-		OutputCount = OutputLayer.OutputCount;
-#pragma omp for
-		for (int32_t OutputIndex = 0; OutputIndex < OutputCount; OutputIndex++)
-		{
-			OutputLayer.ForwardNode(OutputIndex);
-		}
+	OutputCount = OutputLayer.OutputCount;
+	for (int32_t OutputIndex = 0; OutputIndex < OutputCount; OutputIndex++)
+	{
+		OutputLayer.ForwardNode(OutputIndex);
 	}
 }
 
@@ -251,7 +246,7 @@ void NeuralNetwork::Backward(float *pTarget)
 	int32_t InputCount = OutputLayer.InputCount;
 	for (int32_t InputIndex = 0; InputIndex < InputCount; InputIndex++)
 	{
-		OutputLayer.BackwardNodeOutputLayer(pTarget, InputIndex);
+		OutputLayer.BackwardNodeOutputLayer(InputIndex, pTarget);
 	}
 
 	for (int32_t LayerIndex = HiddenCount - 1; LayerIndex >= 0; LayerIndex--)
@@ -280,8 +275,47 @@ void NeuralNetwork::TrainData(DataSet &rDataSet, int32_t IterativeCount)
 	{
 		for (int32_t DataIndex = 0; DataIndex < DataCount; DataIndex++)
 		{
-			Forward(ppInput[DataIndex]);
-			Backward(ppTarget[DataIndex]);
+			int32_t OutputCount = InputLayer.OutputCount;
+			for (int32_t OutputIndex = 0; OutputIndex < OutputCount; OutputIndex++)
+			{
+				InputLayer.ForwardNodeInputLayer(OutputIndex, ppInput[DataIndex]);
+			}
+
+			for (int32_t LayerIndex = 0; LayerIndex < HiddenCount; LayerIndex++)
+			{
+				OutputCount = pHiddenLayer[LayerIndex].OutputCount;
+				for (int32_t OutputIndex = 0; OutputIndex < OutputCount; OutputIndex++)
+				{
+					pHiddenLayer[LayerIndex].ForwardNode(OutputIndex);
+				}
+			}
+
+			OutputCount = OutputLayer.OutputCount;
+			for (int32_t OutputIndex = 0; OutputIndex < OutputCount; OutputIndex++)
+			{
+				OutputLayer.ForwardNode(OutputIndex);
+			}
+
+			int32_t InputCount = OutputLayer.InputCount;
+			for (int32_t InputIndex = 0; InputIndex < InputCount; InputIndex++)
+			{
+				OutputLayer.BackwardNodeOutputLayer(InputIndex, ppTarget[DataIndex]);
+			}
+
+			for (int32_t LayerIndex = HiddenCount - 1; LayerIndex >= 0; LayerIndex--)
+			{
+				InputCount = pHiddenLayer[LayerIndex].InputCount;
+				for (int32_t InputIndex = 0; InputIndex < InputCount; InputIndex++)
+				{
+					pHiddenLayer[LayerIndex].BackwardNode(InputIndex);
+				}
+			}
+
+			InputCount = InputLayer.InputCount;
+			for (int32_t InputIndex = 0; InputIndex < InputCount; InputIndex++)
+			{
+				InputLayer.BackwardNodeInputLayer(InputIndex);
+			}
 		}
 	}
 }
