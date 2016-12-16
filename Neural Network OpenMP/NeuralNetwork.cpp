@@ -87,7 +87,7 @@ void Layer::Initialize(int32_t InputCount, int32_t OutputCount)
 	for (int32_t OutputIndex = 0; OutputIndex < OutputCount; OutputIndex++)
 	{
 		ppWeight[OutputIndex] = pBuffer;
-		pBuffer += OutputCount;
+		pBuffer += InputCount;
 	}
 
 	pNet = pBuffer;
@@ -101,7 +101,6 @@ void Layer::Initialize(int32_t InputCount, int32_t OutputCount)
 
 void Layer::Forward(void)
 {
-//#pragma omp for schedule(dynamic)
 	for (int32_t OutputIndex = 0; OutputIndex < OutputCount; OutputIndex++)
 	{
 		float Net = 0.0f;
@@ -163,28 +162,16 @@ void Layer::BackwardInputLayer(void)
 
 void Layer::BackwardOutputLayer(float *pTarget)
 {
-	for (int32_t InputIndex = 0; InputIndex < InputCount; InputIndex++)
+	for (int32_t OutputIndex = 0; OutputIndex < OutputCount; OutputIndex++)
 	{
-		float TotalError = 0.0f;
-		float Input = pInput[InputIndex];
+		float Output = pOutput[OutputIndex];
+		float Delta = (pTarget[OutputIndex] - Output) * Derivative(eActivation, Output);
 
-		for (int32_t OutputIndex = 0; OutputIndex < OutputCount; OutputIndex++)
-		{
-			float Output = pOutput[OutputIndex];
-			float Delta = (pTarget[OutputIndex] - Output) * Derivative(eActivation, Output);
-			float &rWeight = ppWeight[OutputIndex][InputIndex];
-
-			TotalError += Delta * rWeight;
-			rWeight += LearningRate * Delta * Input;
-
-			pBias[OutputIndex] += LearningRate * Delta;
-			pDelta[OutputIndex] = Delta;
-		}
-
-		float ForwardDelta = TotalError * Derivative(eActivation, Input);
-		pForwardBias[InputIndex] += LearningRate * ForwardDelta;
-		pForwardDelta[InputIndex] = ForwardDelta;
+		pBias[OutputIndex] += LearningRate * Delta;
+		pDelta[OutputIndex] = Delta;
 	}
+
+	Backward();
 }
 
 float Layer::SumOfSquaredError(float *pTarget)
@@ -258,7 +245,7 @@ void NeuralNetwork::TrainData(DataSet &rDataSet, int32_t IterativeCount)
 	float **ppInput = rDataSet.ppTrainInput;
 	float **ppTarget = rDataSet.ppTrainTarget;
 
-//#pragma omp parallel
+	//#pragma omp parallel
 	for (int32_t Iterative = 0; Iterative < IterativeCount; Iterative++)
 	{
 		for (int32_t DataIndex = 0; DataIndex < DataCount; DataIndex++)
