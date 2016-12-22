@@ -13,7 +13,7 @@ inline float Activation(EnumActivation eActivation, float Net)
 	switch (eActivation)
 	{
 	case Logistic:
-		return 1.0F / (1.0F + exp(-Net));
+		return 1.0f / (1.0f + exp(-Net));
 
 	case TanH:
 		return tanh(Net);
@@ -32,10 +32,10 @@ inline float Derivative(EnumActivation eActivation, float Input)
 	switch (eActivation)
 	{
 	case Logistic:
-		return Input * (1.0F - Input);
+		return Input * (1.0f - Input);
 
 	case TanH:
-		return 1.0F - (Input * Input);
+		return 1.0f - (Input * Input);
 
 		//case ArcTan:
 		//	return 1 / (net * net + 1);
@@ -101,7 +101,6 @@ void Layer::Initialize(int32_t InputCount, int32_t OutputCount)
 
 void Layer::Forward(void)
 {
-#pragma omp parallel for
 	for (int32_t OutputIndex = 0; OutputIndex < OutputCount; OutputIndex++)
 	{
 		float Net = 0.0f;
@@ -126,7 +125,6 @@ void Layer::ForwardInputLayer(float *pInput)
 
 void Layer::Backward(void)
 {
-#pragma omp parallel for
 	for (int32_t InputIndex = 0; InputIndex < InputCount; InputIndex++)
 	{
 		float TotalError = 0.0f;
@@ -149,7 +147,6 @@ void Layer::Backward(void)
 
 void Layer::BackwardInputLayer(void)
 {
-#pragma omp parallel for
 	for (int32_t InputIndex = 0; InputIndex < InputCount; InputIndex++)
 	{
 		for (int32_t OutputIndex = 0; OutputIndex < OutputCount; OutputIndex++)
@@ -165,7 +162,6 @@ void Layer::BackwardInputLayer(void)
 
 void Layer::BackwardOutputLayer(float *pTarget)
 {
-#pragma omp parallel for
 	for (int32_t OutputIndex = 0; OutputIndex < OutputCount; OutputIndex++)
 	{
 		float Output = pOutput[OutputIndex];
@@ -210,6 +206,8 @@ NeuralNetwork::NeuralNetwork(int32_t *pLayerNode, int32_t LayerCount, EnumActiva
 
 	NeuralNetwork::HiddenCount = HiddenCount;
 	OutputLayer.Connect(pLastLayer, pLayerNode[LayerCount - 1]);
+
+	Parallel();
 }
 
 NeuralNetwork::~NeuralNetwork()
@@ -218,6 +216,27 @@ NeuralNetwork::~NeuralNetwork()
 	{
 		delete[]pHiddenLayer;
 	}
+
+	if (nullptr != pthread)
+	{
+		delete[]pthread;
+	}
+}
+#include <ppl.h>
+
+using namespace concurrency;
+void NeuralNetwork::Parallel()
+{
+	unsigned int ThreadCount = thread::hardware_concurrency();
+	if (0U == ThreadCount)
+	{
+		pthread = nullptr;
+		return;
+	}
+
+	pthread = nullptr;
+	//pthread = new thread[ThreadCount];
+
 }
 
 void NeuralNetwork::TrainData(DataSet &rDataSet, int32_t IterativeCount)
@@ -729,7 +748,7 @@ void DataSet::SetRatio(float Ratio)
 {
 	int32_t DataCount = pDataFile->DataCount;
 
-	if (1.0F == Ratio)
+	if (1.0 == Ratio)
 	{
 		TrainCount = DataCount;
 		ppTrainInput = ppInput;
