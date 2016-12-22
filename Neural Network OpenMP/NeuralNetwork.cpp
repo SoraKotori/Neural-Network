@@ -210,6 +210,7 @@ void NeuralNetwork::Forward(float *pInput)
 	InputLayer.ForwardBigin(pInput);
 
 	int32_t OutputCount = InputLayer.OutputCount;
+#pragma omp parallel for
 	for (int32_t OutputIndex = 0; OutputIndex < OutputCount; OutputIndex++)
 	{
 		InputLayer.ForwardNode(OutputIndex);
@@ -218,6 +219,7 @@ void NeuralNetwork::Forward(float *pInput)
 	for (int32_t LayerIndex = 0; LayerIndex < HiddenCount; LayerIndex++)
 	{
 		OutputCount = pHiddenLayer[LayerIndex].OutputCount;
+#pragma omp parallel for
 		for (int32_t OutputIndex = 0; OutputIndex < OutputCount; OutputIndex++)
 		{
 			pHiddenLayer[LayerIndex].ForwardNode(OutputIndex);
@@ -225,6 +227,7 @@ void NeuralNetwork::Forward(float *pInput)
 	}
 
 	OutputCount = OutputLayer.OutputCount;
+#pragma omp parallel for
 	for (int32_t OutputIndex = 0; OutputIndex < OutputCount; OutputIndex++)
 	{
 		OutputLayer.ForwardNode(OutputIndex);
@@ -236,6 +239,7 @@ void NeuralNetwork::Backward(float *pTarget)
 	OutputLayer.BackwardBigin(pTarget);
 
 	int32_t InputCount = OutputLayer.InputCount;
+#pragma omp parallel for
 	for (int32_t InputIndex = 0; InputIndex < InputCount; InputIndex++)
 	{
 		OutputLayer.BackwardNode(InputIndex);
@@ -244,6 +248,7 @@ void NeuralNetwork::Backward(float *pTarget)
 	for (int32_t LayerIndex = HiddenCount - 1; LayerIndex >= 0; LayerIndex--)
 	{
 		InputCount = pHiddenLayer[LayerIndex].InputCount;
+#pragma omp parallel for
 		for (int32_t InputIndex = 0; InputIndex < InputCount; InputIndex++)
 		{
 			pHiddenLayer[LayerIndex].BackwardNode(InputIndex);
@@ -251,6 +256,7 @@ void NeuralNetwork::Backward(float *pTarget)
 	}
 
 	InputCount = InputLayer.InputCount;
+#pragma omp parallel for
 	for (int32_t InputIndex = 0; InputIndex < InputCount; InputIndex++)
 	{
 		InputLayer.BackwardNodeInputLayer(InputIndex);
