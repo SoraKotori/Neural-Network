@@ -1,5 +1,3 @@
-#define _CRT_SECURE_NO_WARNINGS
-
 #include "NeuralNetwork.hpp"
 #include <cmath>
 #include <cfloat>
@@ -391,8 +389,9 @@ int32_t StringList::Search(char *pString, size_t StringSize)
 
 bool CSVFileOpen(char **ppFile, char *pFileName, size_t *pFileSize)
 {
-	FILE *pFILE = fopen(pFileName, "rb");
-	if (nullptr == pFILE)
+	FILE *pFILE = nullptr;
+	errno_t Error = fopen_s(&pFILE, pFileName, "rb");
+	if (0 != Error)
 	{
 		return false;
 	}
@@ -499,8 +498,9 @@ void CSVFileClose(char *pFile)
 
 bool DataFileOpen(DataFile **ppDataFile, char *pFileName)
 {
-	FILE *pFILE = fopen(pFileName, "rb");
-	if (nullptr == pFILE)
+	FILE *pFILE = nullptr;
+	errno_t Error = fopen_s(&pFILE, pFileName, "rb");
+	if (0 != Error)
 	{
 		return false;
 	}
@@ -576,8 +576,9 @@ bool DataFileOpenCSV(DataFile **ppDataFile, char *pFileName, int32_t InputCount,
 
 bool DataFileSave(DataFile *pDataFile, char *pFileName)
 {
-	FILE *pFILE = fopen(pFileName, "wb");
-	if (nullptr == pFILE)
+	FILE *pFILE = nullptr;
+	errno_t Error = fopen_s(&pFILE, pFileName, "wb");
+	if (0 != Error)
 	{
 		return false;
 	}

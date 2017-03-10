@@ -8,7 +8,7 @@
 #define FileName "zoo.csv"
 
 #define Ratio 1.0F
-#define HiddenNode 10
+#define HiddenNode 100
 #define Iterative 10'000
 #define LearningRate 0.01F
 
