@@ -9,7 +9,7 @@
 
 #define Ratio 1.0F
 #define HiddenNode 100
-#define Iterative 10'000
+#define Iterative 1'000
 #define LearningRate 0.01F
 
 using namespace std;
@@ -24,7 +24,7 @@ int main(void)
 	int32_t LayerCount = sizeof(pLayerNode) / sizeof(int32_t);
 	NeuralNetwork NeuralNetwork(pLayerNode, LayerCount, Logistic, LearningRate);
 
-	system("PAUSE");
+	//system("PAUSE");
 
 	clock_t beg = clock();
 	NeuralNetwork.TrainData(DataSet, Iterative);

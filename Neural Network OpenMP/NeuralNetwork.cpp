@@ -3,777 +3,802 @@
 #include <cfloat>
 #include <cstring>
 #include <fstream>
+#include <vector>
 
 using namespace std;
 
 inline float Activation(EnumActivation eActivation, float Net)
 {
-	switch (eActivation)
-	{
-	case Logistic:
-		return 1.0f / (1.0f + exp(-Net));
+    switch (eActivation)
+    {
+    case Logistic:
+        return 1.0f / (1.0f + exp(-Net));
 
-	case TanH:
-		return tanh(Net);
+    case TanH:
+        return tanh(Net);
 
-	case ArcTan:
-		return atan(Net);
+    case ArcTan:
+        return atan(Net);
 
-	case Softsign:
-		return Net / (1 + fabs(Net));
-	}
-	return 0;
+    case Softsign:
+        return Net / (1 + fabs(Net));
+    }
+    return 0;
 }
 
 inline float Derivative(EnumActivation eActivation, float Input)
 {
-	switch (eActivation)
-	{
-	case Logistic:
-		return Input * (1.0f - Input);
+    switch (eActivation)
+    {
+    case Logistic:
+        return Input * (1.0f - Input);
 
-	case TanH:
-		return 1.0f - (Input * Input);
+    case TanH:
+        return 1.0f - (Input * Input);
 
-		//case ArcTan:
-		//	return 1 / (net * net + 1);
+        //case ArcTan:
+        //	return 1 / (net * net + 1);
 
-		//case Softsign:
-		//	return 1 / ((1 + fabs(net)) * (1 + fabs(net)));
-	}
-	return 0;
+        //case Softsign:
+        //	return 1 / ((1 + fabs(net)) * (1 + fabs(net)));
+    }
+    return 0;
 }
 
 Layer::~Layer()
 {
-	delete[] * ppWeight;
-	delete[]ppWeight;
+    delete[] * ppWeight;
+    delete[]ppWeight;
 }
 
 void Layer::Create(int32_t InputCount, int32_t OutputCount, EnumActivation eActivation, float LearningRate)
 {
-	Initialize(InputCount, OutputCount);
+    Initialize(InputCount, OutputCount);
 
-	pInput = nullptr;
-	pForwardBias = nullptr;
-	pForwardDelta = nullptr;
-	Layer::eActivation = eActivation;
-	Layer::LearningRate = LearningRate;
+    pInput = nullptr;
+    pForwardBias = nullptr;
+    pForwardDelta = nullptr;
+    Layer::eActivation = eActivation;
+    Layer::LearningRate = LearningRate;
 }
 
 void Layer::Connect(Layer *pForwardLayer, int32_t OutputCount)
 {
-	Initialize(pForwardLayer->OutputCount, OutputCount);
+    Initialize(pForwardLayer->OutputCount, OutputCount);
 
-	pInput = pForwardLayer->pOutput;
+    pInput = pForwardLayer->pOutput;
 
-	pForwardBias = pForwardLayer->pBias;
-	pForwardDelta = pForwardLayer->pDelta;
+    pForwardBias = pForwardLayer->pBias;
+    pForwardDelta = pForwardLayer->pDelta;
 
-	Layer::eActivation = pForwardLayer->eActivation;
-	Layer::LearningRate = pForwardLayer->LearningRate;
+    Layer::eActivation = pForwardLayer->eActivation;
+    Layer::LearningRate = pForwardLayer->LearningRate;
 }
 
 void Layer::Initialize(int32_t InputCount, int32_t OutputCount)
 {
-	Layer::InputCount = InputCount;
-	Layer::OutputCount = OutputCount;
+    Layer::InputCount = InputCount;
+    Layer::OutputCount = OutputCount;
 
-	float *pBuffer = new float[(InputCount + 4) * OutputCount]();
+    float *pBuffer = new float[(InputCount + 4) * OutputCount]();
 
-	ppWeight = new float*[OutputCount];
-	for (int32_t OutputIndex = 0; OutputIndex < OutputCount; OutputIndex++)
-	{
-		ppWeight[OutputIndex] = pBuffer;
-		pBuffer += InputCount;
-	}
+    ppWeight = new float*[OutputCount];
+    for (int32_t OutputIndex = 0; OutputIndex < OutputCount; OutputIndex++)
+    {
+        ppWeight[OutputIndex] = pBuffer;
+        pBuffer += InputCount;
+    }
 
-	pNet = pBuffer;
-	pBuffer += OutputCount;
-	pBias = pBuffer;
-	pBuffer += OutputCount;
-	pDelta = pBuffer;
-	pBuffer += OutputCount;
-	pOutput = pBuffer;
+    pNet = pBuffer;
+    pBuffer += OutputCount;
+    pBias = pBuffer;
+    pBuffer += OutputCount;
+    pDelta = pBuffer;
+    pBuffer += OutputCount;
+    pOutput = pBuffer;
 }
 
 void Layer::Forward(void)
 {
-	for (int32_t OutputIndex = 0; OutputIndex < OutputCount; OutputIndex++)
-	{
-		float Net = 0.0f;
-		float *pWeight = ppWeight[OutputIndex];
+    for (int32_t OutputIndex = 0; OutputIndex < OutputCount; OutputIndex++)
+    {
+        float Net = 0.0F;
+        float *pWeight = ppWeight[OutputIndex];
 
-		for (int32_t InputIndex = 0; InputIndex < InputCount; InputIndex++)
-		{
-			Net += pInput[InputIndex] * pWeight[InputIndex];
-		}
-		Net += pBias[OutputIndex];
+        for (int32_t InputIndex = 0; InputIndex < InputCount; InputIndex++)
+        {
+            Net += pInput[InputIndex] * pWeight[InputIndex];
+        }
+        Net += pBias[OutputIndex];
 
-		pNet[OutputIndex] = Net;
-		pOutput[OutputIndex] = Activation(eActivation, Net);
-	}
+        pNet[OutputIndex] = Net;
+        pOutput[OutputIndex] = Activation(eActivation, Net);
+    }
 }
 
 void Layer::ForwardInputLayer(float *pInput)
 {
-	Layer::pInput = pInput;
-	Forward();
+    Layer::pInput = pInput;
+    Forward();
 }
 
 void Layer::Backward(void)
 {
-	for (int32_t InputIndex = 0; InputIndex < InputCount; InputIndex++)
-	{
-		float TotalError = 0.0f;
-		float Input = pInput[InputIndex];
+    memset(pForwardDelta, 0, sizeof(*pForwardDelta) * InputCount);
 
-		for (int32_t OutputIndex = 0; OutputIndex < OutputCount; OutputIndex++)
-		{
-			float &rWeight = ppWeight[OutputIndex][InputIndex];
-			float Delta = pDelta[OutputIndex];
+    for (int32_t OutputIndex = 0; OutputIndex < OutputCount; OutputIndex++)
+    {
+        float* pWeight = ppWeight[OutputIndex];
+        float Delta = pDelta[OutputIndex];
+        float LearningRateDelta = LearningRate * Delta;
 
-			TotalError += Delta * rWeight;
-			rWeight += LearningRate * Delta * Input;
-		}
+        for (int32_t InputIndex = 0; InputIndex < InputCount; InputIndex++)
+        {
+            float& rWeight = pWeight[InputIndex];
 
-		float ForwardDelta = TotalError * Derivative(eActivation, Input);
-		pForwardBias[InputIndex] += LearningRate * ForwardDelta;
-		pForwardDelta[InputIndex] = ForwardDelta;
-	}
+            pForwardDelta[InputIndex] += Delta * rWeight;
+            rWeight += LearningRateDelta * pInput[InputIndex];
+        }
+    }
+
+    for (int32_t InputIndex = 0; InputIndex < InputCount; InputIndex++)
+    {
+        float& rForwardDelta = pForwardDelta[InputIndex];
+
+        rForwardDelta *= Derivative(eActivation, pInput[InputIndex]);
+        pForwardBias[InputIndex] += LearningRate * rForwardDelta;
+    }
+
+    //for (int32_t InputIndex = 0; InputIndex < InputCount; InputIndex++)
+    //{
+    //    float TotalError = 0.0F;
+    //    float Input = pInput[InputIndex];
+
+    //    for (int32_t OutputIndex = 0; OutputIndex < OutputCount; OutputIndex++)
+    //    {
+    //        float &rWeight = ppWeight[OutputIndex][InputIndex];
+    //        float Delta = pDelta[OutputIndex];
+
+    //        TotalError += Delta * rWeight;
+    //        rWeight += LearningRate * Delta * Input;
+    //    }
+
+    //    float ForwardDelta = TotalError * Derivative(eActivation, Input);
+    //    pForwardBias[InputIndex] += LearningRate * ForwardDelta;
+    //    pForwardDelta[InputIndex] = ForwardDelta;
+    //}
 }
 
 void Layer::BackwardInputLayer(void)
 {
-	for (int32_t InputIndex = 0; InputIndex < InputCount; InputIndex++)
-	{
-		for (int32_t OutputIndex = 0; OutputIndex < OutputCount; OutputIndex++)
-		{
-			float Input = pInput[InputIndex];
-			float Delta = pDelta[OutputIndex];
-			float &rWeight = ppWeight[OutputIndex][InputIndex];
+    for (int32_t OutputIndex = 0; OutputIndex < OutputCount; OutputIndex++)
+    {
+        float* pWeight = ppWeight[OutputIndex];
+        float Delta = pDelta[OutputIndex];
 
-			rWeight += LearningRate * Delta * Input;
-		}
-	}
+        for (int32_t InputIndex = 0; InputIndex < InputCount; InputIndex++)
+        {
+            pWeight[InputIndex] += LearningRate * Delta * pInput[InputIndex];
+        }
+    }
 }
 
 void Layer::BackwardOutputLayer(float *pTarget)
 {
-	for (int32_t OutputIndex = 0; OutputIndex < OutputCount; OutputIndex++)
-	{
-		float Output = pOutput[OutputIndex];
-		float Delta = (pTarget[OutputIndex] - Output) * Derivative(eActivation, Output);
+    for (int32_t OutputIndex = 0; OutputIndex < OutputCount; OutputIndex++)
+    {
+        float Output = pOutput[OutputIndex];
+        float Delta = (pTarget[OutputIndex] - Output) * Derivative(eActivation, Output);
 
-		pBias[OutputIndex] += LearningRate * Delta;
-		pDelta[OutputIndex] = Delta;
-	}
+        pDelta[OutputIndex] = Delta;
+        pBias[OutputIndex] += LearningRate * Delta;
+    }
 
-	Backward();
+    Backward();
 }
 
 float Layer::SumOfSquaredError(float *pTarget)
 {
-	float SumOfSquaredError = 0.0f;
-	for (int32_t OutputIndex = 0; OutputIndex < OutputCount; OutputIndex++)
-	{
-		float Error = pTarget[OutputIndex] - pOutput[OutputIndex];
-		SumOfSquaredError += Error * Error;
-	}
+    float SumOfSquaredError = 0.0F;
+    for (int32_t OutputIndex = 0; OutputIndex < OutputCount; OutputIndex++)
+    {
+        float Error = pTarget[OutputIndex] - pOutput[OutputIndex];
+        SumOfSquaredError += Error * Error;
+    }
 
-	return SumOfSquaredError;
+    return SumOfSquaredError;
 }
 
 NeuralNetwork::NeuralNetwork(int32_t *pLayerNode, int32_t LayerCount, EnumActivation eActivation, float LearningRate)
 {
-	InputLayer.Create(pLayerNode[0], pLayerNode[1], eActivation, LearningRate);
-	Layer *pLastLayer = &InputLayer;
+    InputLayer.Create(pLayerNode[0], pLayerNode[1], eActivation, LearningRate);
+    Layer *pLastLayer = &InputLayer;
 
-	int32_t HiddenCount = LayerCount - 3;
-	if (0 != HiddenCount)
-	{
-		Layer *pHiddenLayer = new Layer[HiddenCount];
-		for (int32_t HiddenIndex = 0; HiddenIndex < HiddenCount; HiddenIndex++)
-		{
-			pHiddenLayer[HiddenIndex].Connect(pLastLayer, pLayerNode[HiddenIndex + 2]);
-			pLastLayer = &pHiddenLayer[HiddenIndex];
-		}
+    int32_t HiddenCount = LayerCount - 3;
+    if (0 != HiddenCount)
+    {
+        Layer *pHiddenLayer = new Layer[HiddenCount];
+        for (int32_t HiddenIndex = 0; HiddenIndex < HiddenCount; HiddenIndex++)
+        {
+            pHiddenLayer[HiddenIndex].Connect(pLastLayer, pLayerNode[HiddenIndex + 2]);
+            pLastLayer = &pHiddenLayer[HiddenIndex];
+        }
 
-		NeuralNetwork::pHiddenLayer = pHiddenLayer;
-	}
+        NeuralNetwork::pHiddenLayer = pHiddenLayer;
+    }
 
-	NeuralNetwork::HiddenCount = HiddenCount;
-	OutputLayer.Connect(pLastLayer, pLayerNode[LayerCount - 1]);
+    NeuralNetwork::HiddenCount = HiddenCount;
+    OutputLayer.Connect(pLastLayer, pLayerNode[LayerCount - 1]);
 
-	Parallel();
+    Parallel();
 }
 
 NeuralNetwork::~NeuralNetwork()
 {
-	if (0 != HiddenCount)
-	{
-		delete[]pHiddenLayer;
-	}
+    if (0 != HiddenCount)
+    {
+        delete[]pHiddenLayer;
+    }
 
-	if (nullptr != pthread)
-	{
-		delete[]pthread;
-	}
+    if (nullptr != pthread)
+    {
+        delete[]pthread;
+    }
 }
 #include <ppl.h>
 
 using namespace concurrency;
 void NeuralNetwork::Parallel()
 {
-	unsigned int ThreadCount = thread::hardware_concurrency();
-	if (0U == ThreadCount)
-	{
-		pthread = nullptr;
-		return;
-	}
+    unsigned int ThreadCount = thread::hardware_concurrency();
+    if (0U == ThreadCount)
+    {
+        pthread = nullptr;
+        return;
+    }
 
-	pthread = nullptr;
-	//pthread = new thread[ThreadCount];
+    pthread = nullptr;
+    //pthread = new thread[ThreadCount];
 
 }
 
 void NeuralNetwork::TrainData(DataSet &rDataSet, int32_t IterativeCount)
 {
-	int32_t DataCount = rDataSet.TrainCount;
-	float **ppInput = rDataSet.ppTrainInput;
-	float **ppTarget = rDataSet.ppTrainTarget;
+    int32_t DataCount = rDataSet.TrainCount;
+    float **ppInput = rDataSet.ppTrainInput;
+    float **ppTarget = rDataSet.ppTrainTarget;
 
-	//#pragma omp parallel
-	for (int32_t Iterative = 0; Iterative < IterativeCount; Iterative++)
-	{
-		for (int32_t DataIndex = 0; DataIndex < DataCount; DataIndex++)
-		{
-			Forward(ppInput[DataIndex]);
-			Backward(ppTarget[DataIndex]);
-		}
-	}
+    //#pragma omp parallel
+    for (int32_t Iterative = 0; Iterative < IterativeCount; Iterative++)
+    {
+        for (int32_t DataIndex = 0; DataIndex < DataCount; DataIndex++)
+        {
+            Forward(ppInput[DataIndex]);
+            Backward(ppTarget[DataIndex]);
+        }
+    }
 }
 
 void NeuralNetwork::TestData(DataSet &rDataSet, float &rMeanSquaredError)
 {
-	int32_t DataCount = rDataSet.TestCount;
-	float **ppInput = rDataSet.ppTestInput;
-	float **ppOutput = rDataSet.ppTestOutput;
-	float **ppTarget = rDataSet.ppTestTarget;
+    int32_t DataCount = rDataSet.TestCount;
+    float **ppInput = rDataSet.ppTestInput;
+    float **ppOutput = rDataSet.ppTestOutput;
+    float **ppTarget = rDataSet.ppTestTarget;
 
-	float *pOutput = OutputLayer.pOutput;
-	size_t OutputSize = sizeof(float) * OutputLayer.OutputCount;
+    float *pOutput = OutputLayer.pOutput;
+    size_t OutputSize = sizeof(float) * OutputLayer.OutputCount;
 
-	float SumOfSquaredError = 0.0f;
-	for (int32_t DataIndex = 0; DataIndex < DataCount; DataIndex++)
-	{
-		Forward(ppInput[DataIndex]);
-		memcpy(ppOutput[DataIndex], pOutput, OutputSize);
-		SumOfSquaredError += OutputLayer.SumOfSquaredError(ppTarget[DataIndex]);
-	}
+    float SumOfSquaredError = 0.0F;
+    for (int32_t DataIndex = 0; DataIndex < DataCount; DataIndex++)
+    {
+        Forward(ppInput[DataIndex]);
+        memcpy(ppOutput[DataIndex], pOutput, OutputSize);
+        SumOfSquaredError += OutputLayer.SumOfSquaredError(ppTarget[DataIndex]);
+    }
 
-	rMeanSquaredError = SumOfSquaredError / DataCount / OutputLayer.OutputCount;
+    rMeanSquaredError = SumOfSquaredError / DataCount / OutputLayer.OutputCount;
 }
 
 void NeuralNetwork::Forward(float *pInput)
 {
-	InputLayer.ForwardInputLayer(pInput);
-	for (int32_t LayerIndex = 0; LayerIndex < HiddenCount; LayerIndex++)
-	{
-		pHiddenLayer[LayerIndex].Forward();
-	}
-	OutputLayer.Forward();
+    InputLayer.ForwardInputLayer(pInput);
+    for (int32_t LayerIndex = 0; LayerIndex < HiddenCount; LayerIndex++)
+    {
+        pHiddenLayer[LayerIndex].Forward();
+    }
+    OutputLayer.Forward();
 }
 
 void NeuralNetwork::Backward(float *pTarget)
 {
-	OutputLayer.BackwardOutputLayer(pTarget);
-	for (int32_t LayerIndex = HiddenCount - 1; LayerIndex >= 0; LayerIndex--)
-	{
-		pHiddenLayer[LayerIndex].Backward();
-	}
-	InputLayer.BackwardInputLayer();
+    OutputLayer.BackwardOutputLayer(pTarget);
+    for (int32_t LayerIndex = HiddenCount - 1; LayerIndex >= 0; LayerIndex--)
+    {
+        pHiddenLayer[LayerIndex].Backward();
+    }
+    InputLayer.BackwardInputLayer();
 }
 
 class StringNode
 {
 public:
-	StringNode(StringNode *pPrevious, char *pString, size_t StringSize);
-	~StringNode();
+    StringNode(StringNode *pPrevious, char *pString, size_t StringSize);
+    ~StringNode();
 
-	StringNode *pPrevious;
-	bool Equal(char *pString, size_t StringSize);
+    StringNode *pPrevious;
+    bool Equal(char *pString, size_t StringSize);
 
 private:
 
-	char *pString;
-	size_t StringSize;
+    char *pString;
+    size_t StringSize;
 };
 
 StringNode::StringNode(StringNode *pPrevious, char *pString, size_t StringSize) :
-	pPrevious(pPrevious),
-	pString(new char[StringSize]),
-	StringSize(StringSize)
+    pPrevious(pPrevious),
+    pString(new char[StringSize]),
+    StringSize(StringSize)
 {
-	memcpy(StringNode::pString, pString, StringSize);
+    memcpy(StringNode::pString, pString, StringSize);
 }
 
 StringNode::~StringNode()
 {
-	delete[]pString;
+    delete[]pString;
 }
 
 bool StringNode::Equal(char *pString, size_t StringSize)
 {
-	if (StringNode::StringSize != StringSize)
-	{
-		return false;
-	}
+    if (StringNode::StringSize != StringSize)
+    {
+        return false;
+    }
 
-	int iResult = memcmp(StringNode::pString, pString, StringSize);
-	if (0 != iResult)
-	{
-		return false;
-	}
+    int iResult = memcmp(StringNode::pString, pString, StringSize);
+    if (0 != iResult)
+    {
+        return false;
+    }
 
-	return true;
+    return true;
 }
 
 class StringList
 {
 public:
-	StringList();
-	~StringList();
+    StringList();
+    ~StringList();
 
-	int32_t Search(char *pString, size_t StringSize);
+    int32_t Search(char *pString, size_t StringSize);
 
 private:
-	StringNode *pLastNode;
-	int32_t NodeCount;
+    StringNode *pLastNode;
+    int32_t NodeCount;
 };
 
 StringList::StringList() :
-	pLastNode(nullptr),
-	NodeCount(0U)
+    pLastNode(nullptr),
+    NodeCount(0U)
 {}
 
 StringList::~StringList()
 {
-	for (int32_t NodeIndex = NodeCount; 0 < NodeIndex; NodeIndex--)
-	{
-		StringNode *pDeleteNode = pLastNode;
-		pLastNode = pLastNode->pPrevious;
+    for (int32_t NodeIndex = NodeCount; 0 < NodeIndex; NodeIndex--)
+    {
+        StringNode *pDeleteNode = pLastNode;
+        pLastNode = pLastNode->pPrevious;
 
-		delete pDeleteNode;
-	}
+        delete pDeleteNode;
+    }
 }
 
 int32_t StringList::Search(char *pString, size_t StringSize)
 {
-	StringNode *pSearchNode = pLastNode;
-	for (int32_t NodeNumber = NodeCount; 0 < NodeNumber; NodeNumber--)
-	{
-		bool bResult = pSearchNode->Equal(pString, StringSize);
-		if (true == bResult)
-		{
-			return NodeNumber;
-		}
+    StringNode *pSearchNode = pLastNode;
+    for (int32_t NodeNumber = NodeCount; 0 < NodeNumber; NodeNumber--)
+    {
+        bool bResult = pSearchNode->Equal(pString, StringSize);
+        if (true == bResult)
+        {
+            return NodeNumber;
+        }
 
-		pSearchNode = pSearchNode->pPrevious;
-	}
+        pSearchNode = pSearchNode->pPrevious;
+    }
 
-	StringNode *pNewNode = new StringNode(pLastNode, pString, StringSize);
-	pLastNode = pNewNode;
-	return ++NodeCount;
+    StringNode *pNewNode = new StringNode(pLastNode, pString, StringSize);
+    pLastNode = pNewNode;
+    return ++NodeCount;
 }
 
 bool CSVFileOpen(char **ppFile, char *pFileName, size_t *pFileSize)
 {
-	FILE *pFILE = nullptr;
-	errno_t Error = fopen_s(&pFILE, pFileName, "rb");
-	if (0 != Error)
-	{
-		return false;
-	}
+    FILE *pFILE = nullptr;
+    errno_t Error = fopen_s(&pFILE, pFileName, "rb");
+    if (0 != Error)
+    {
+        return false;
+    }
 
-	int iResult = fseek(pFILE, 0L, SEEK_END);
-	if (0 != iResult)
-	{
-		return false;
-	}
+    int iResult = fseek(pFILE, 0L, SEEK_END);
+    if (0 != iResult)
+    {
+        return false;
+    }
 
-	long FileCurrent = ftell(pFILE);
-	if (-1L == FileCurrent)
-	{
-		return false;
-	}
-	size_t FileSize = static_cast<size_t>(FileCurrent);
+    long FileCurrent = ftell(pFILE);
+    if (-1L == FileCurrent)
+    {
+        return false;
+    }
+    size_t FileSize = static_cast<size_t>(FileCurrent);
 
-	void *pDataFile = operator new(FileSize);
-	if (nullptr == pDataFile)
-	{
-		return false;
-	}
+    void *pDataFile = operator new(FileSize);
+    if (nullptr == pDataFile)
+    {
+        return false;
+    }
 
-	iResult = fseek(pFILE, 0L, SEEK_SET);
-	if (0 != iResult)
-	{
-		return false;
-	}
+    iResult = fseek(pFILE, 0L, SEEK_SET);
+    if (0 != iResult)
+    {
+        return false;
+    }
 
-	size_t ResultSize = fread(pDataFile, sizeof(uint8_t), FileSize, pFILE);
-	if (FileSize != ResultSize)
-	{
-		return false;
-	}
+    size_t ResultSize = fread(pDataFile, sizeof(uint8_t), FileSize, pFILE);
+    if (FileSize != ResultSize)
+    {
+        return false;
+    }
 
-	iResult = fclose(pFILE);
-	if (0 != iResult)
-	{
-		return false;
-	}
+    iResult = fclose(pFILE);
+    if (0 != iResult)
+    {
+        return false;
+    }
 
-	*ppFile = reinterpret_cast<char*>(pDataFile);
-	*pFileSize = FileSize;
-	return true;
+    *ppFile = reinterpret_cast<char*>(pDataFile);
+    *pFileSize = FileSize;
+    return true;
 }
 
 void CSVFileRead(char *pFile, char *pFileEnd, float *pData, int32_t Column)
 {
-	StringList *pStringList = new StringList[Column];
-	StringList StringList;
-	int32_t ColumnIndex = 0;
-	Column--;
+    StringList *pStringList = new StringList[Column];
+    StringList StringList;
+    int32_t ColumnIndex = 0;
+    Column--;
 
-	bool Previous = false;
-	char *pString = nullptr;
+    bool Previous = false;
+    char *pString = nullptr;
 
-	while (pFile < pFileEnd)
-	{
-		char Character = *pFile;
-		switch (Character)
-		{
-		case ',':
-		case ' ':
-		case '\r':
-		case '\n':
-			if (true == Previous)
-			{
-				size_t StringSize = pFile - pString;
-				//int32_t Data = StringList.Search(pString, StringSize);
-				int32_t Data = pStringList[ColumnIndex].Search(pString, StringSize);
-				ColumnIndex = ColumnIndex < Column ? ColumnIndex + 1 : 0;
+    while (pFile < pFileEnd)
+    {
+        char Character = *pFile;
+        switch (Character)
+        {
+        case ',':
+        case ' ':
+        case '\r':
+        case '\n':
+            if (true == Previous)
+            {
+                size_t StringSize = pFile - pString;
+                //int32_t Data = StringList.Search(pString, StringSize);
+                int32_t Data = pStringList[ColumnIndex].Search(pString, StringSize);
+                ColumnIndex = ColumnIndex < Column ? ColumnIndex + 1 : 0;
 
-				*pData++ = static_cast<float>(Data);
-				Previous = false;
-			}
-			break;
+                *pData++ = static_cast<float>(Data);
+                Previous = false;
+            }
+            break;
 
-		default:
-			if (false == Previous)
-			{
-				pString = pFile;
-				Previous = true;
-			}
-			break;
-		}
-		pFile++;
-	}
+        default:
+            if (false == Previous)
+            {
+                pString = pFile;
+                Previous = true;
+            }
+            break;
+        }
+        pFile++;
+    }
 
-	if (true == Previous)
-	{
-		size_t StringSize = pFile - pString;
-		//int32_t Data = StringList.Search(pString, StringSize);
-		int32_t Data = pStringList[ColumnIndex].Search(pString, StringSize);
-		*pData = static_cast<float>(Data);
-	}
+    if (true == Previous)
+    {
+        size_t StringSize = pFile - pString;
+        //int32_t Data = StringList.Search(pString, StringSize);
+        int32_t Data = pStringList[ColumnIndex].Search(pString, StringSize);
+        *pData = static_cast<float>(Data);
+    }
 
-	delete[]pStringList;
+    delete[]pStringList;
 }
 
 void CSVFileClose(char *pFile)
 {
-	delete[]pFile;
+    delete[]pFile;
 }
 
 bool DataFileOpen(DataFile **ppDataFile, char *pFileName)
 {
-	FILE *pFILE = nullptr;
-	errno_t Error = fopen_s(&pFILE, pFileName, "rb");
-	if (0 != Error)
-	{
-		return false;
-	}
+    FILE *pFILE = nullptr;
+    errno_t Error = fopen_s(&pFILE, pFileName, "rb");
+    if (0 != Error)
+    {
+        return false;
+    }
 
-	int iResult = fseek(pFILE, 0L, SEEK_END);
-	if (0 != iResult)
-	{
-		return false;
-	}
+    int iResult = fseek(pFILE, 0L, SEEK_END);
+    if (0 != iResult)
+    {
+        return false;
+    }
 
-	long FileCurrent = ftell(pFILE);
-	if (-1L == FileCurrent)
-	{
-		return false;
-	}
-	size_t FileSize = static_cast<size_t>(FileCurrent);
+    long FileCurrent = ftell(pFILE);
+    if (-1L == FileCurrent)
+    {
+        return false;
+    }
+    size_t FileSize = static_cast<size_t>(FileCurrent);
 
-	void *pDataFile = operator new(FileSize);
-	if (nullptr == pDataFile)
-	{
-		return false;
-	}
+    void *pDataFile = operator new(FileSize);
+    if (nullptr == pDataFile)
+    {
+        return false;
+    }
 
-	iResult = fseek(pFILE, 0L, SEEK_SET);
-	if (0 != iResult)
-	{
-		return false;
-	}
+    iResult = fseek(pFILE, 0L, SEEK_SET);
+    if (0 != iResult)
+    {
+        return false;
+    }
 
-	size_t ResultSize = fread(pDataFile, sizeof(uint8_t), FileSize, pFILE);
-	if (FileSize != ResultSize)
-	{
-		return false;
-	}
+    size_t ResultSize = fread(pDataFile, sizeof(uint8_t), FileSize, pFILE);
+    if (FileSize != ResultSize)
+    {
+        return false;
+    }
 
-	iResult = fclose(pFILE);
-	if (0 != iResult)
-	{
-		return false;
-	}
+    iResult = fclose(pFILE);
+    if (0 != iResult)
+    {
+        return false;
+    }
 
-	*ppDataFile = reinterpret_cast<DataFile*>(pDataFile);
-	return true;
+    *ppDataFile = reinterpret_cast<DataFile*>(pDataFile);
+    return true;
 }
 
 bool DataFileOpenCSV(DataFile **ppDataFile, char *pFileName, int32_t InputCount, int32_t OutputCount, int32_t DataCount)
 {
-	char *pFile = nullptr;
-	size_t FileSize = 0U;
+    char *pFile = nullptr;
+    size_t FileSize = 0U;
 
-	bool bResult = CSVFileOpen(&pFile, pFileName, &FileSize);
-	if (false == bResult)
-	{
-		return false;
-	}
+    bool bResult = CSVFileOpen(&pFile, pFileName, &FileSize);
+    if (false == bResult)
+    {
+        return false;
+    }
 
-	size_t DataSize = sizeof(DataFile) + sizeof(float) * (DataCount * (InputCount + OutputCount));
-	DataFile *pDataFile = reinterpret_cast<DataFile*>(operator new(DataSize));
+    size_t DataSize = sizeof(DataFile) + sizeof(float) * (DataCount * (InputCount + OutputCount));
+    DataFile *pDataFile = reinterpret_cast<DataFile*>(operator new(DataSize));
 
-	char *pFileEnd = pFile + FileSize;
-	int32_t Column = InputCount + OutputCount;
+    char *pFileEnd = pFile + FileSize;
+    int32_t Column = InputCount + OutputCount;
 
-	CSVFileRead(pFile, pFileEnd, pDataFile->pData, Column);
-	CSVFileClose(pFile);
+    CSVFileRead(pFile, pFileEnd, pDataFile->pData, Column);
+    CSVFileClose(pFile);
 
-	pDataFile->DataCount = DataCount;
-	pDataFile->InputCount = InputCount;
-	pDataFile->OutputCount = OutputCount;
+    pDataFile->DataCount = DataCount;
+    pDataFile->InputCount = InputCount;
+    pDataFile->OutputCount = OutputCount;
 
-	*ppDataFile = pDataFile;
-	return true;
+    *ppDataFile = pDataFile;
+    return true;
 }
 
 bool DataFileSave(DataFile *pDataFile, char *pFileName)
 {
-	FILE *pFILE = nullptr;
-	errno_t Error = fopen_s(&pFILE, pFileName, "wb");
-	if (0 != Error)
-	{
-		return false;
-	}
+    FILE *pFILE = nullptr;
+    errno_t Error = fopen_s(&pFILE, pFileName, "wb");
+    if (0 != Error)
+    {
+        return false;
+    }
 
-	int32_t DataCount = pDataFile->DataCount;
-	int32_t InputCount = pDataFile->InputCount;
-	int32_t OutputCount = pDataFile->OutputCount;
+    int32_t DataCount = pDataFile->DataCount;
+    int32_t InputCount = pDataFile->InputCount;
+    int32_t OutputCount = pDataFile->OutputCount;
 
-	size_t FileSize = sizeof(DataFile) + sizeof(float) * (DataCount * (InputCount + OutputCount));
+    size_t FileSize = sizeof(DataFile) + sizeof(float) * (DataCount * (InputCount + OutputCount));
 
-	size_t ResultSize = fwrite(pDataFile, sizeof(char), FileSize, pFILE);
-	if (FileSize != ResultSize)
-	{
-		return false;
-	}
+    size_t ResultSize = fwrite(pDataFile, sizeof(char), FileSize, pFILE);
+    if (FileSize != ResultSize)
+    {
+        return false;
+    }
 
-	int Result = fclose(pFILE);
-	if (0 != Result)
-	{
-		return false;
-	}
+    int Result = fclose(pFILE);
+    if (0 != Result)
+    {
+        return false;
+    }
 
-	return true;
+    return true;
 }
 
 void DataFileClose(DataFile *pDataFile)
 {
-	delete pDataFile;
+    delete pDataFile;
 }
 
 void DataFileNormalize(DataFile *pDataFile)
 {
-	int32_t DataCount = pDataFile->DataCount;
-	int32_t IOCount = pDataFile->InputCount + pDataFile->OutputCount;
+    int32_t DataCount = pDataFile->DataCount;
+    int32_t IOCount = pDataFile->InputCount + pDataFile->OutputCount;
 
-	float *pMax = new float[IOCount];
-	float *pMin = new float[IOCount];
+    float *pMax = new float[IOCount];
+    float *pMin = new float[IOCount];
 
-	for (int32_t IOIndex = 0; IOIndex < IOCount; IOIndex++)
-	{
-		pMax[IOIndex] = FLT_MIN;
-		pMin[IOIndex] = FLT_MAX;
-	}
+    for (int32_t IOIndex = 0; IOIndex < IOCount; IOIndex++)
+    {
+        pMax[IOIndex] = FLT_MIN;
+        pMin[IOIndex] = FLT_MAX;
+    }
 
-	float *pData = pDataFile->pData;
-	for (int32_t DataIndex = 0; DataIndex < DataCount; DataIndex++)
-	{
-		for (int32_t IOIndex = 0; IOIndex < IOCount; IOIndex++)
-		{
-			float Data = *pData++;
-			if (Data > pMax[IOIndex])
-			{
-				pMax[IOIndex] = Data;
-			}
-			else if (Data < pMin[IOIndex])
-			{
-				pMin[IOIndex] = Data;
-			}
-		}
-	}
+    float *pData = pDataFile->pData;
+    for (int32_t DataIndex = 0; DataIndex < DataCount; DataIndex++)
+    {
+        for (int32_t IOIndex = 0; IOIndex < IOCount; IOIndex++)
+        {
+            float Data = *pData++;
+            if (Data > pMax[IOIndex])
+            {
+                pMax[IOIndex] = Data;
+            }
+            else if (Data < pMin[IOIndex])
+            {
+                pMin[IOIndex] = Data;
+            }
+        }
+    }
 
-	float *pDifference = new float[IOCount];
-	for (int32_t IOIndex = 0; IOIndex < IOCount; IOIndex++)
-	{
-		pDifference[IOIndex] = pMax[IOIndex] - pMin[IOIndex];
-	}
+    float *pDifference = new float[IOCount];
+    for (int32_t IOIndex = 0; IOIndex < IOCount; IOIndex++)
+    {
+        pDifference[IOIndex] = pMax[IOIndex] - pMin[IOIndex];
+    }
 
-	pData = pDataFile->pData;
-	for (int32_t DataIndex = 0; DataIndex < DataCount; DataIndex++)
-	{
-		for (int32_t IOIndex = 0; IOIndex < IOCount; IOIndex++)
-		{
-			float &rData = *pData++;
-			rData = (rData - pMin[IOIndex]) / pDifference[IOIndex];
-		}
-	}
+    pData = pDataFile->pData;
+    for (int32_t DataIndex = 0; DataIndex < DataCount; DataIndex++)
+    {
+        for (int32_t IOIndex = 0; IOIndex < IOCount; IOIndex++)
+        {
+            float &rData = *pData++;
+            rData = (rData - pMin[IOIndex]) / pDifference[IOIndex];
+        }
+    }
 
-	delete[]pMax;
-	delete[]pMin;
-	delete[]pDifference;
+    delete[]pMax;
+    delete[]pMin;
+    delete[]pDifference;
 }
 
 DataSet::DataSet(char *pFileName)
 {
-	bool bResult = DataFileOpen(&pDataFile, pFileName);
-	if (false == bResult)
-	{
-		throw;
-	}
+    bool bResult = DataFileOpen(&pDataFile, pFileName);
+    if (false == bResult)
+    {
+        throw;
+    }
 
-	Initialize();
+    Initialize();
 }
 
 DataSet::DataSet(char *pFileNameCSV, int32_t InputCount, int32_t OutputCount, int32_t DataCount)
 {
-	bool bResult = DataFileOpenCSV(&pDataFile, pFileNameCSV, InputCount, OutputCount, DataCount);
-	if (false == bResult)
-	{
-		throw;
-	}
+    bool bResult = DataFileOpenCSV(&pDataFile, pFileNameCSV, InputCount, OutputCount, DataCount);
+    if (false == bResult)
+    {
+        throw;
+    }
 
-	Initialize();
+    Initialize();
 }
 
 void DataSet::Initialize()
 {
-	int32_t DataCount = pDataFile->DataCount;
-	int32_t InputCount = pDataFile->InputCount;
-	int32_t OutputCount = pDataFile->OutputCount;
-	int32_t Column = InputCount + OutputCount;
+    int32_t DataCount = pDataFile->DataCount;
+    int32_t InputCount = pDataFile->InputCount;
+    int32_t OutputCount = pDataFile->OutputCount;
+    int32_t Column = InputCount + OutputCount;
 
-	float **ppData = new float*[DataCount * 3];
-	float *pOutput = new float[DataCount * OutputCount];
-	float *pData = pDataFile->pData;
+    float **ppData = new float*[DataCount * 3];
+    float *pOutput = new float[DataCount * OutputCount];
+    float *pData = pDataFile->pData;
 
-	ppOutput = ppData;
-	ppInput = ppOutput + DataCount;
-	ppTrain = ppInput + DataCount;
+    ppOutput = ppData;
+    ppInput = ppOutput + DataCount;
+    ppTrain = ppInput + DataCount;
 
-	for (int32_t DataIndex = 0; DataIndex < DataCount; DataIndex++)
-	{
-		ppOutput[DataIndex] = &pOutput[DataIndex * OutputCount];
-		ppInput[DataIndex] = &pData[DataIndex * Column];
-		ppTrain[DataIndex] = ppInput[DataIndex] + InputCount;
-	}
+    for (int32_t DataIndex = 0; DataIndex < DataCount; DataIndex++)
+    {
+        ppOutput[DataIndex] = &pOutput[DataIndex * OutputCount];
+        ppInput[DataIndex] = &pData[DataIndex * Column];
+        ppTrain[DataIndex] = ppInput[DataIndex] + InputCount;
+    }
 }
 
 DataSet::~DataSet()
 {
-	DataFileClose(pDataFile);
-	delete[] * ppOutput;
-	delete[]ppOutput;
+    DataFileClose(pDataFile);
+    delete[] * ppOutput;
+    delete[]ppOutput;
 }
 
 bool DataSet::Save(char *pFileName)
 {
-	return DataFileSave(pDataFile, pFileName);
+    return DataFileSave(pDataFile, pFileName);
 }
 
 bool DataSet::SaveCSV(char *pFileName)
 {
-	ofstream OutputFile(pFileName, ofstream::out);
-	bool bResult = OutputFile.is_open();
-	if (false == bResult)
-	{
-		return false;
-	}
+    ofstream OutputFile(pFileName, ofstream::out);
+    bool bResult = OutputFile.is_open();
+    if (false == bResult)
+    {
+        return false;
+    }
 
-	int32_t DataCount = pDataFile->DataCount;
-	int32_t Column = pDataFile->InputCount + pDataFile->OutputCount - 1;
-	float *pData = pDataFile->pData;
+    int32_t DataCount = pDataFile->DataCount;
+    int32_t Column = pDataFile->InputCount + pDataFile->OutputCount - 1;
+    float *pData = pDataFile->pData;
 
-	OutputFile << fixed;
-	for (int32_t DataIndex = 0; DataIndex < DataCount; DataIndex++)
-	{
-		for (int32_t ColumnIndex = 0; ColumnIndex < Column; ColumnIndex++)
-		{
-			OutputFile << *pData++ << ", ";
-		}
-		OutputFile << *pData++ << endl;
-	}
+    OutputFile << fixed;
+    for (int32_t DataIndex = 0; DataIndex < DataCount; DataIndex++)
+    {
+        for (int32_t ColumnIndex = 0; ColumnIndex < Column; ColumnIndex++)
+        {
+            OutputFile << *pData++ << ", ";
+        }
+        OutputFile << *pData++ << endl;
+    }
 
-	OutputFile.close();
-	return true;
+    OutputFile.close();
+    return true;
 }
 
 void DataSet::SetRatio(float Ratio)
 {
-	int32_t DataCount = pDataFile->DataCount;
+    int32_t DataCount = pDataFile->DataCount;
 
-	if (1.0 == Ratio)
-	{
-		TrainCount = DataCount;
-		ppTrainInput = ppInput;
-		ppTrainTarget = ppTrain;
+    if (1.0 == Ratio)
+    {
+        TrainCount = DataCount;
+        ppTrainInput = ppInput;
+        ppTrainTarget = ppTrain;
 
-		TestCount = DataCount;
-		ppTestInput = ppInput;
-		ppTestOutput = ppOutput;
-		ppTestTarget = ppTrain;
-	}
-	else
-	{
-		TrainCount = int32_t(DataCount * Ratio);
-		ppTrainInput = ppInput;
-		ppTrainTarget = ppTrain;
+        TestCount = DataCount;
+        ppTestInput = ppInput;
+        ppTestOutput = ppOutput;
+        ppTestTarget = ppTrain;
+    }
+    else
+    {
+        TrainCount = int32_t(DataCount * Ratio);
+        ppTrainInput = ppInput;
+        ppTrainTarget = ppTrain;
 
-		TestCount = DataCount - TrainCount;
-		ppTestInput = ppInput + TrainCount;
-		ppTestOutput = ppOutput + TrainCount;
-		ppTestTarget = ppTrain + TrainCount;
-	}
+        TestCount = DataCount - TrainCount;
+        ppTestInput = ppInput + TrainCount;
+        ppTestOutput = ppOutput + TrainCount;
+        ppTestTarget = ppTrain + TrainCount;
+    }
 }
 
 void DataSet::Normalize()
 {
-	DataFileNormalize(pDataFile);
+    DataFileNormalize(pDataFile);
 }
